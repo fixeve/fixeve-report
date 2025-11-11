@@ -3,235 +3,189 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fixeve Timer</title>
+<title>Fixeve レポート</title>
 <style>
   body {
+    font-family: "Hiragino Kaku Gothic ProN", sans-serif;
     background-color: #eef6ff;
-    font-family: "Arial", sans-serif;
     text-align: center;
-    padding: 30px;
-    transition: background-color 0.1s;
+    margin: 0;
+    padding: 20px;
   }
-  h1 { margin-bottom: 10px; }
-  #timer {
-    font-size: 64px;
-    margin: 20px 0;
+  h1 {
+    font-size: 28px;
+    margin-bottom: 10px;
   }
-  #status, #total {
-    font-size: 20px;
-    margin: 10px 0;
+  .mode-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 15px;
   }
   button {
-    font-size: 20px;
-    margin: 10px;
-    padding: 10px 30px;
+    padding: 8px 16px;
     border: none;
     border-radius: 8px;
-    cursor: pointer;
+    background-color: #007bff;
+    color: white;
+    font-size: 16px;
   }
-  .start { background-color: #4caf50; color: white; }
-  .pause { background-color: #ff9800; color: white; }
-  .stop { background-color: #f44336; color: white; }
-  select {
-    padding: 8px;
+  button:hover {
+    background-color: #0056b3;
+  }
+  .arrow-buttons {
+    margin-top: 10px;
+  }
+  .arrow-buttons button {
+    background-color: #555;
     font-size: 18px;
+  }
+  canvas {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 0 10px #ccc;
+    margin-top: 15px;
   }
   #home {
     display: block;
-    margin-top: 30px;
+    margin-top: 25px;
     color: #007bff;
+    font-weight: bold;
     text-decoration: none;
   }
 </style>
 </head>
 <body>
-  <h1>タイマー</h1>
+  <h1>レポート</h1>
+  <div class="mode-buttons">
+    <button onclick="setMode('day')">日</button>
+    <button onclick="setMode('week')">週</button>
+    <button onclick="setMode('month')">月</button>
+    <button onclick="setMode('year')">年</button>
+  </div>
 
-  <label for="mode">モード選択：</label>
-  <select id="mode">
-    <option value="up">カウントアップ</option>
-    <option value="pomodoro">25分勉強 / 5分休憩</option>
-    <option value="focus50">50分勉強 / 10分休憩</option>
-  </select>
+  <div class="arrow-buttons" id="navArrows" style="display:none;">
+    <button onclick="changePeriod(-1)">←</button>
+    <button onclick="changePeriod(1)">→</button>
+  </div>
 
-  <div id="timer">00:00</div>
-  <div id="status">停止中</div>
-  <div id="total">今日の合計：0時間0分</div>
-
-  <button class="start" id="startBtn">開始</button>
-  <button class="pause" id="pauseBtn">中断</button>
-  <button class="stop" id="stopBtn">終了</button>
+  <h2 id="title"></h2>
+  <canvas id="chartCanvas" width="350" height="300"></canvas>
 
   <a id="home" href="https://fixeve.github.io/fixeve-home/">ホームに戻る</a>
 
 <script>
-let timerDisplay = document.getElementById("timer");
-let statusDisplay = document.getElementById("status");
-let totalDisplay = document.getElementById("total");
-let startBtn = document.getElementById("startBtn");
-let pauseBtn = document.getElementById("pauseBtn");
-let stopBtn = document.getElementById("stopBtn");
-let modeSelect = document.getElementById("mode");
+const canvas = document.getElementById("chartCanvas");
+const ctx = canvas.getContext("2d");
+let mode = "day";
+let currentDate = new Date();
 
-let timer = null;
-let timeLeft = 0;
-let isRunning = false;
-let isStudy = true;
-let setCount = 1;
-let flashing = false;
-let elapsedUp = 0; // カウントアップ経過秒
-
-function todayKey() {
-  const now = new Date();
-  now.setHours(now.getHours() + 9);
-  return now.toISOString().split("T")[0];
+function getStudyData() {
+  return JSON.parse(localStorage.getItem("studyRecords") || "{}");
 }
 
-function checkDailyReset() {
-  const savedDate = localStorage.getItem("fixeve_date");
-  const today = todayKey();
-  if (savedDate !== today) {
-    localStorage.setItem("fixeve_date", today);
-    localStorage.setItem("fixeve_studyTime", "0");
+// ==== モード切り替え ====
+function setMode(newMode) {
+  mode = newMode;
+  document.getElementById("navArrows").style.display = (mode === "day" || mode === "week") ? "none" : "block";
+  drawChart();
+}
+
+// ==== 期間移動 ====
+function changePeriod(offset) {
+  if (mode === "month") {
+    currentDate.setMonth(currentDate.getMonth() + offset);
+  } else if (mode === "year") {
+    currentDate.setFullYear(currentDate.getFullYear() + offset);
   }
-}
-checkDailyReset();
-
-function updateTotalDisplay() {
-  const sec = parseInt(localStorage.getItem("fixeve_studyTime") || "0");
-  const h = Math.floor(sec / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  totalDisplay.textContent = `今日の合計：${h}時間${m}分`;
+  drawChart();
 }
 
-function recordStudy(seconds) {
-  if (seconds <= 0) return;
-  let sec = parseInt(localStorage.getItem("fixeve_studyTime") || "0");
-  localStorage.setItem("fixeve_studyTime", sec + seconds);
-  updateTotalDisplay();
-}
+// ==== グラフ描画 ====
+function drawChart() {
+  const data = getStudyData();
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#000";
+  ctx.font = "16px Arial";
 
-function updateDisplay() {
-  const minutes = String(Math.floor(timeLeft / 60)).padStart(2, "0");
-  const seconds = String(timeLeft % 60).padStart(2, "0");
-  timerDisplay.textContent = `${minutes}:${seconds}`;
-}
-
-function getInitialTime() {
-  if (modeSelect.value === "pomodoro") return 1500;
-  if (modeSelect.value === "focus50") return 3000;
-  return 0;
-}
-
-// ✅ モード変更時（カウントアップの加算を正確に）
-modeSelect.addEventListener("change", () => {
-  if (isRunning) pauseTimer();
-
-  const prevMode = modeSelect.dataset.prevMode || "up";
-
-  if (prevMode === "up") {
-    // カウントアップ中ならそのまま経過時間を加算
-    recordStudy(elapsedUp);
-  } else if (isStudy && getInitialTime() > 0 && timeLeft > 0) {
-    // 他のモードの場合だけ差分を加算
-    recordStudy(getInitialTime() - timeLeft);
+  if (mode === "day") {
+    const todayKey = formatDate(currentDate);
+    const total = data[todayKey] || 0;
+    document.getElementById("title").textContent = `${todayKey} の勉強時間`;
+    drawBars([{ label: todayKey, value: total }]);
   }
 
-  stopTimer();
-  elapsedUp = 0;
-  modeSelect.dataset.prevMode = modeSelect.value;
-});
-
-// --- 超チカチカ点滅 ---
-function startFlashing() {
-  flashing = true;
-  let colors = ["#9f00ff", "#000000", "#baff00", "#000000"];
-  let i = 0;
-  let flashInterval = setInterval(() => {
-    if (!flashing) {
-      clearInterval(flashInterval);
-      document.body.style.backgroundColor = "#eef6ff";
-      return;
+  if (mode === "week") {
+    let days = [];
+    for (let i = 6; i >= 0; i--) {
+      let d = new Date(currentDate);
+      d.setDate(d.getDate() - i);
+      const key = formatDate(d);
+      days.push({ label: key.slice(5), value: data[key] || 0 });
     }
-    document.body.style.backgroundColor = colors[i % colors.length];
-    i++;
-  }, 150);
-  document.body.addEventListener("click", nextAfterFlash, { once: true });
-}
-
-function nextAfterFlash() {
-  flashing = false;
-  isStudy = !isStudy;
-  if (isStudy) {
-    setCount++;
-    const longBreak = (modeSelect.value === "pomodoro" ? 900 : 1800);
-    const studyTime = (modeSelect.value === "pomodoro" ? 1500 : 3000);
-    timeLeft = (setCount % 5 === 0) ? longBreak : studyTime;
-  } else {
-    timeLeft = (modeSelect.value === "pomodoro" ? 300 : 600);
+    document.getElementById("title").textContent = `過去7日間の勉強時間`;
+    drawBars(days);
   }
-  updateDisplay();
-  startTimer();
-}
 
-function startTimer() {
-  if (isRunning) return;
-  isRunning = true;
-  statusDisplay.textContent = isStudy ? "勉強中" : "休憩中";
+  if (mode === "month") {
+    let year = currentDate.getFullYear();
+    let month = currentDate.getMonth();
+    let daysInMonth = new Date(year, month + 1, 0).getDate();
+    let days = [];
+    for (let i = 1; i <= daysInMonth; i++) {
+      let key = `${year}-${String(month + 1).padStart(2,"0")}-${String(i).padStart(2,"0")}`;
+      days.push({ label: i.toString(), value: data[key] || 0 });
+    }
+    document.getElementById("title").textContent = `${year}年${month + 1}月の勉強時間`;
+    drawBars(days);
+  }
 
-  timer = setInterval(() => {
-    if (modeSelect.value === "up") {
-      elapsedUp++;
-      timeLeft = elapsedUp;
-    } else {
-      timeLeft--;
-      if (timeLeft < 0) {
-        clearInterval(timer);
-        isRunning = false;
-        if (isStudy) recordStudy(modeSelect.value === "pomodoro" ? 1500 : 3000);
-        startFlashing();
-        return;
+  if (mode === "year") {
+    let year = currentDate.getFullYear();
+    let months = [];
+    for (let i = 0; i < 12; i++) {
+      let total = 0;
+      for (let d = 1; d <= 31; d++) {
+        let key = `${year}-${String(i+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+        total += data[key] || 0;
       }
+      months.push({ label: `${i+1}月`, value: total });
     }
-    updateDisplay();
-  }, 1000);
-}
-
-function pauseTimer() {
-  if (!isRunning) return;
-  clearInterval(timer);
-  isRunning = false;
-  statusDisplay.textContent = "一時停止中";
-}
-
-function stopTimer() {
-  clearInterval(timer);
-  isRunning = false;
-  isStudy = true;
-  setCount = 1;
-  timeLeft = 0;
-  updateDisplay();
-  statusDisplay.textContent = "停止中";
-}
-
-startBtn.onclick = () => {
-  if (modeSelect.value !== "up" && timeLeft === 0) timeLeft = getInitialTime();
-  startTimer();
-};
-pauseBtn.onclick = pauseTimer;
-stopBtn.onclick = () => {
-  if (modeSelect.value === "up") {
-    recordStudy(elapsedUp);
-  } else if (isStudy && getInitialTime() > 0 && timeLeft > 0) {
-    recordStudy(getInitialTime() - timeLeft);
+    document.getElementById("title").textContent = `${year}年の勉強時間`;
+    drawBars(months);
   }
-  stopTimer();
-  elapsedUp = 0;
-};
+}
 
-updateDisplay();
-updateTotalDisplay();
-modeSelect.dataset.prevMode = "up";
+function drawBars(items) {
+  const max = Math.max(...items.map(i => i.value), 1);
+  const barWidth = (canvas.width - 40) / items.length;
+  ctx.fillStyle = "#007bff";
+
+  items.forEach((item, i) => {
+    const x = 20 + i * barWidth;
+    const h = (item.value / max) * 200;
+    ctx.fillRect(x, 260 - h, barWidth - 5, h);
+    ctx.fillStyle = "#000";
+    ctx.fillText(item.label, x + barWidth/4, 280);
+    ctx.fillText(formatTime(item.value), x + barWidth/6, 250 - h);
+    ctx.fillStyle = "#007bff";
+  });
+}
+
+function formatDate(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth()+1).padStart(2,"0");
+  const d = String(date.getDate()).padStart(2,"0");
+  return `${y}-${m}-${d}`;
+}
+
+function formatTime(sec) {
+  const h = Math.floor(sec/3600);
+  const m = Math.floor((sec%3600)/60);
+  return `${h}h${m}m`;
+}
+
+drawChart();
 </script>
 </body>
 </html>
