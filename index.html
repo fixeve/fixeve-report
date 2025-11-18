@@ -146,7 +146,7 @@ function buildDayData(dateObj){
   // single bar (the day)
   const secs = readDaySeconds(dateObj);
   return {
-    labels: [ `${String(dateObj.getMonth()+1)}/${String(dateObj.getDate())}` ],
+    labels: [ `${String(dateObj.getMonth())}/${String(dateObj.getDate())}` ],
     values: [ secs ],
     centerText: `${formatSecondsToHMS(secs)}`
   };
