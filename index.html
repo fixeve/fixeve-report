@@ -1,428 +1,325 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fixeve レポート</title>
 
-<!-- Chart.js CDN -->
+<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-  :root{
-    --bg:#f4f6f8;
-    --card:#ffffff;
-    --accent:#007aff;
-    --text:#222;
-  }
-  html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family: -apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Helvetica Neue",Arial;}
-  .container{max-width:900px;margin:0 auto;padding:12px 14px 92px;box-sizing:border-box;}
-  .header{display:flex;align-items:center;justify-content:space-between;padding:12px 6px;}
-  .title{font-size:20px;font-weight:600;margin:0;}
-  .view-switch{display:flex;gap:8px;justify-content:center;margin:10px 0 6px;}
-  .view-switch button{background:var(--card);border:1px solid #e2e6ea;padding:8px 14px;border-radius:16px;font-size:14px;color:#333;cursor:pointer;}
-  .view-switch button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-  .center-info{ text-align:center;margin-top:8px;font-size:20px;font-weight:700; }
-  .nav-row{display:flex;align-items:center;justify-content:space-between;padding:6px 4px;margin-top:6px;}
-  .nav-arrow{font-size:28px;color:#888;cursor:pointer;user-select:none;padding:6px 12px;border-radius:8px;}
-  .nav-arrow.disabled{opacity:.25;pointer-events:none;}
-  .chart-card{background:var(--card);border-radius:12px;padding:14px;margin-top:8px;box-shadow:0 1px 4px rgba(0,0,0,0.04);border:1px solid #e9eef3;}
-  .chart-wrap{width:100%;height:520px;/* large */ position:relative;}
-  canvas{width:100% !important;height:100% !important;display:block;}
-
-  /* popup when tapping a bar */
-  .pop {
-    position: fixed;
-    z-index: 9999;
-    background: #fff;
-    border-radius: 10px;
-    padding: 10px 12px;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.12);
-    font-weight:600;
-    transform: translate(-50%,-120%);
-    pointer-events: none;
-    white-space: nowrap;
+  body {
+    font-family: "Arial", sans-serif;
+    background-color: #ffffff;
+    margin: 0;
+    padding: 0;
+    text-align: center;
   }
 
-  .home-btn {
-    position: fixed;
-    bottom: 18px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--accent);
-    color: #fff;
+  h1 {
+    margin-top: 20px;
+    font-size: 28px;
+    font-weight: bold;
+  }
+
+  .tab-container {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin: 20px 0;
+  }
+
+  .tab-button {
+    padding: 10px 22px;
+    font-size: 16px;
+    border-radius: 6px;
+    border: none;
+    background-color: #ddd;
+    cursor: pointer;
+  }
+
+  .tab-button.active {
+    background-color: #4a90e2;
+    color: white;
+  }
+
+  .view {
+    display: none;
+  }
+  .view.active {
+    display: block;
+  }
+
+  canvas {
+    max-width: 90%;
+    margin-top: 20px;
+  }
+
+  #detail-text {
+    font-size: 18px;
+    margin-top: 15px;
+  }
+
+  /* ホームボタン */
+  #home-btn {
+    display: inline-block;
+    margin: 40px 0 30px;
+    padding: 12px 30px;
+    background-color: #4a90e2;
+    color: white;
+    border-radius: 8px;
     text-decoration: none;
-    padding: 12px 22px;
-    border-radius: 999px;
-    font-weight:700;
-    box-shadow: 0 6px 18px rgba(0,122,255,0.18);
+    font-size: 18px;
   }
 
-  /* responsive tweak */
-  @media (max-width:480px) {
-    .chart-wrap{height:420px;}
-    .center-info{font-size:18px;}
-  }
 </style>
 </head>
 <body>
-<div class="container">
-  <div class="header">
-    <div style="display:flex;align-items:center;gap:12px;">
-      <div style="width:36px;height:36px;border-radius:8px;background:var(--card);display:flex;align-items:center;justify-content:center;border:1px solid #e6eaef;">📊</div>
-      <div class="title">振り返り</div>
-    </div>
-    <div style="font-size:13px;color:#666">データ: localStorage</div>
-  </div>
 
-  <div class="view-switch" role="tablist" aria-label="ビュー切替">
-    <button id="btn-day" class="active" onclick="switchView('day')">日</button>
-    <button id="btn-week" onclick="switchView('week')">週</button>
-    <button id="btn-month" onclick="switchView('month')">月</button>
-    <button id="btn-year" onclick="switchView('year')">年</button>
-  </div>
+<h1>Fixeve レポート</h1>
 
-  <div class="center-info" id="center-title">-- h -- min</div>
-
-  <div class="nav-row">
-    <div id="left-arrow" class="nav-arrow" onclick="movePrev()">‹</div>
-    <div style="font-size:13px;color:#666">（週以外は ← → で移動）</div>
-    <div id="right-arrow" class="nav-arrow" onclick="moveNext()">›</div>
-  </div>
-
-  <div class="chart-card">
-    <div class="chart-wrap">
-      <canvas id="reportChart"></canvas>
-    </div>
-  </div>
+<!-- タブ -->
+<div class="tab-container">
+  <button class="tab-button active" data-view="day">日</button>
+  <button class="tab-button" data-view="week">週</button>
+  <button class="tab-button" data-view="month">月</button>
+  <button class="tab-button" data-view="year">年</button>
 </div>
 
-<!-- popup element (created dynamically as needed) -->
-<div id="popup" class="pop" style="display:none;"></div>
+<p id="detail-text"></p>
 
-<a class="home-btn" href="https://fixeve.github.io/fixeve-home/">ホームへ戻る</a>
+<!-- ================= 日 ================= -->
+<div id="view-day" class="view active">
+  <canvas id="chart-day" width="350" height="300"></canvas>
+</div>
+
+<!-- ================= 週 ================= -->
+<div id="view-week" class="view">
+  <canvas id="chart-week" width="350" height="300"></canvas>
+</div>
+
+<!-- ================= 月 ================= -->
+<div id="view-month" class="view">
+  <input type="month" id="month-select" style="font-size:16px; padding:5px;">
+  <canvas id="chart-month" width="350" height="300"></canvas>
+</div>
+
+<!-- ================= 年 ================= -->
+<div id="view-year" class="view">
+  <input type="number" id="year-input" value="2025" min="2000" max="2100"
+         style="font-size:16px; padding:5px; width:120px;">
+  <canvas id="chart-year" width="350" height="300"></canvas>
+</div>
+
+<!-- ホームへ戻る -->
+<a id="home-btn" href="https://fixeve.github.io/fixeve-home/">ホームへ戻る</a>
+
 
 <script>
-/*
-  Report page full implementation.
-  Data format (from your timer):
-    localStorage["study_YYYY-MM-DD"] = seconds (integer)
-*/
-
-const ctx = document.getElementById('reportChart').getContext('2d');
-let chart = null;
-let currentView = 'day'; // day, week, month, year
-let anchorDate = getJSTodayDateObj(); // used for week/month navigation (Date object in JST)
-let popup = document.getElementById('popup');
-
-// helpers: JST date formatting
-function getJSTodayDateObj(){
+/* ==============================
+      共通：日付系関数
+============================== */
+function getTodayKey() {
   const now = new Date();
-  // shift to JST by adding 9 hours difference
   const jst = new Date(now.getTime() + 9*60*60*1000);
-  // create new date keeping year/month/date in JST (local time of jst)
-  return new Date(jst.getFullYear(), jst.getMonth(), jst.getDate());
-}
-function yyyy_mm_dd(dateObj){
-  const y = dateObj.getFullYear();
-  const m = String(dateObj.getMonth()+1).padStart(2,'0');
-  const d = String(dateObj.getDate()).padStart(2,'0');
-  return `${y}-${m}-${d}`;
-}
-function formatSecondsToHMS(sec){
-  if(!sec || sec <= 0) return "0h 0m";
-  const h = Math.floor(sec/3600);
-  const m = Math.floor((sec%3600)/60);
-  return `${h}h ${m}m`;
-}
-function readDaySeconds(dateObj){
-  const key = 'study_' + yyyy_mm_dd(dateObj);
-  const v = parseInt(localStorage.getItem(key));
-  return isNaN(v) ? 0 : v;
+  return jst.toISOString().slice(0, 10);
 }
 
-// build dataset for each view
-function buildDayData(dateObj){
-  // single bar (the day)
-  const secs = readDaySeconds(dateObj);
-  return {
-    labels: [ `${String(dateObj.getMonth()+1)}/${String(dateObj.getDate())}` ],
-    values: [ secs ],
-    centerText: `${formatSecondsToHMS(secs)}`
-  };
+function getHourKey(dateKey, hour) {
+  return `study_${dateKey}_${String(hour).padStart(2,"0")}`;
 }
 
-function buildWeekData(dateObj){
-  // week: show past 6 days -> today (7 bars). Today on right.
-  const labels = [];
-  const values = [];
-  for(let i=6; i>=0; i--){
-    const d = new Date(dateObj);
+function getDateKey(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+/* ==============================
+      データ取得
+============================== */
+function loadTodayHourly() {
+  const key = getTodayKey();
+  let arr = [];
+  for (let h = 0; h < 24; h++) {
+    const sec = parseInt(localStorage.getItem(getHourKey(key, h))) || 0;
+    arr.push(sec / 60); // 分
+  }
+  return arr;
+}
+
+function loadDailyByDateKey(key) {
+  const sec = parseInt(localStorage.getItem("study_" + key)) || 0;
+  return Math.floor(sec / 60);
+}
+
+function loadWeekly() {
+  let arr = [];
+  const today = new Date();
+
+  for (let i = 6; i >= 0; i--) {
+    let d = new Date(today);
     d.setDate(d.getDate() - i);
-    labels.push(`${String(d.getMonth()+1)}/${String(d.getDate())}`);
-    values.push(readDaySeconds(d));
+
+    const key = getDateKey(new Date(d.getTime() + 9*60*60*1000));
+    arr.push(loadDailyByDateKey(key));
   }
-  // center text: today's total
-  const todaySecs = readDaySeconds(dateObj);
-  return { labels, values, centerText: formatSecondsToHMS(todaySecs) };
+  return arr;
 }
 
-function buildMonthData(dateObj){
-  // month: 1 .. lastDay
-  const year = dateObj.getFullYear();
-  const month = dateObj.getMonth(); // 0-index
-  const last = new Date(year, month+1, 0).getDate();
-  const labels = [], values = [];
-  let total = 0;
-  for(let d=1; d<=last; d++){
-    const dt = new Date(year, month, d);
-    labels.push(String(d));
-    const secs = readDaySeconds(dt);
-    values.push(secs);
-    total += secs;
+function loadMonthly(year, month) {
+  let arr = [];
+  const last = new Date(year, month, 0).getDate();
+
+  for (let d = 1; d <= last; d++) {
+    const key = `${year}-${String(month).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    arr.push(loadDailyByDateKey(key));
   }
-  return { labels, values, centerText: `${year}年 ${month+1}月 — ${formatSecondsToHMS(total)}` };
+  return arr;
 }
 
-function buildYearData(dateObj){
-  const year = dateObj.getFullYear();
-  const labels = [], values = [];
-  let total = 0;
-  for(let m=0; m<12; m++){
-    labels.push(`${m+1}月`);
-    // sum days of this month
-    const last = new Date(year, m+1, 0).getDate();
-    let monthTotal = 0;
-    for(let d=1; d<=last; d++){
-      const dt = new Date(year, m, d);
-      monthTotal += readDaySeconds(dt);
+function loadYearly(year) {
+  let arr = [];
+  for (let m = 1; m <= 12; m++) {
+    let sum = 0;
+    const last = new Date(year, m, 0).getDate();
+    for (let d = 1; d <= last; d++) {
+      const key = `${year}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+      sum += loadDailyByDateKey(key);
     }
-    values.push(monthTotal);
-    total += monthTotal;
+    arr.push(sum);
   }
-  return { labels, values, centerText: `${year}年 — ${formatSecondsToHMS(total)}` };
+  return arr;
 }
 
-// draw the chart with given labels & values
-function drawChart(labels, values){
-  if(chart) chart.destroy();
+/* ==============================
+      グラフ表示
+============================== */
+let chartDay, chartWeek, chartMonth, chartYear;
 
-  // convert seconds to hours (display scaled by minutes/hours); Chart shows values in hours for nicer scale
-  // We'll display ticks in hours (decimal) but keep raw seconds in dataset for click mapping.
-  // To preserve exactness, dataset will store seconds; we use a transformed display value: seconds/3600.
-  const dataForChart = values.map(v => +(v/3600).toFixed(3)); // hours decimal
+function renderDay() {
+  const ctx = document.getElementById("chart-day").getContext("2d");
+  const data = loadTodayHourly();
 
-  chart = new Chart(ctx, {
-    type: 'bar',
+  if (chartDay) chartDay.destroy();
+  chartDay = new Chart(ctx, {
+    type: "bar",
     data: {
-      labels: labels,
-      datasets: [{
-        label: '勉強時間（時間）',
-        data: dataForChart,
-        rawSeconds: values, // custom field we will reference on click
-        backgroundColor: 'rgba(0,122,255,0.55)',
-        borderRadius: 8,
-        barPercentage: 0.72,
-        categoryPercentage: 0.9
-      }]
+      labels: [...Array(24)].map((_,i)=>`${i}時`),
+      datasets: [{ data }]
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: {
-            // show ticks as hours (h)
-            callback: function(val, index, ticks) {
-              // val is hour decimal
-              if (val === 0) return '0h';
-              return val + 'h';
-            }
-          }
-        },
-        x: {
-          ticks: { maxRotation: 0, minRotation: 0 }
-        }
+      onClick: (evt, item)=>{
+        if (!item.length) return;
+        const i = item[0].index;
+        document.getElementById("detail-text").textContent =
+          `${i}時台の勉強時間：${Math.floor(data[i])}分`;
       },
-      plugins: {
-        tooltip: {
-          enabled: false // we use custom click popup instead of default tooltip
-        },
-        legend: { display:false }
-      },
-      onClick: chartClickHandler
+      scales: { y: { beginAtZero: true } }
     }
   });
 }
 
-// click handler: show popup with precise seconds -> formatted
-function chartClickHandler(evt, elements){
-  // elements is array of active elements
-  if(!elements || elements.length === 0) return;
-  const e = elements[0];
-  const idx = e.index;
-  const ds = chart.data.datasets[0];
-  const rawSeconds = (ds.rawSeconds && ds.rawSeconds[idx]) ? ds.rawSeconds[idx] : Math.round(ds.data[idx]*3600);
-  const label = chart.data.labels[idx];
-  showPopup(evt.native, `${label}： ${formatSecondsToHMS(rawSeconds)}`, evt.native.clientX, evt.native.clientY);
-}
+function renderWeek() {
+  const ctx = document.getElementById("chart-week").getContext("2d");
+  const data = loadWeekly();
 
-// show popup text at x,y
-function showPopup(nativeEvent, text, clientX, clientY){
-  popup.style.display = 'block';
-  popup.textContent = text;
-  // position near the click (but inside viewport)
-  const pad = 12;
-  let left = clientX;
-  let top = clientY - 12;
-  // prevent overflow right
-  const rect = popup.getBoundingClientRect();
-  // set left first to measure width
-  popup.style.left = left + 'px';
-  popup.style.top = top + 'px';
-  // small timeout to ensure dimensions
-  setTimeout(()=> {
-    const w = popup.offsetWidth;
-    const h = popup.offsetHeight;
-    if(left + w/2 > window.innerWidth) left = window.innerWidth - w - pad;
-    if(left - w/2 < 0) left = pad;
-    if(top - h < 0) top = clientY + 18; // put below if not enough above
-    popup.style.left = left + 'px';
-    popup.style.top = top + 'px';
-  },0);
-
-  // hide after 2.6s
-  clearTimeout(popup._hideTimer);
-  popup._hideTimer = setTimeout(()=> { popup.style.display='none'; }, 2600);
-}
-
-// UI control functions
-function switchView(view){
-  currentView = view;
-  document.querySelectorAll('.view-switch button').forEach(b => b.classList.remove('active'));
-  document.getElementById('btn-' + view).classList.add('active');
-  // left/right arrows only shown for month/year
-  if(view === 'month' || view === 'year'){
-    document.getElementById('left-arrow').classList.remove('disabled');
-    document.getElementById('right-arrow').classList.remove('disabled');
-  } else {
-    document.getElementById('left-arrow').classList.add('disabled');
-    document.getElementById('right-arrow').classList.add('disabled');
-  }
-  renderCurrent();
-}
-
-// navigation for month/year
-function movePrev(){
-  if(currentView === 'month'){ anchorDate.setMonth(anchorDate.getMonth()-1); }
-  else if(currentView === 'year'){ anchorDate.setFullYear(anchorDate.getFullYear()-1); }
-  renderCurrent();
-}
-function moveNext(){
-  if(currentView === 'month'){ anchorDate.setMonth(anchorDate.getMonth()+1); }
-  else if(currentView === 'year'){ anchorDate.setFullYear(anchorDate.getFullYear()+1); }
-  renderCurrent();
-}
-
-// render according to currentView & anchorDate
-function renderCurrent(){
-  if(currentView === 'day'){
-    const res = buildDayData(anchorDate);
-    document.getElementById('center-title').textContent = res.centerText;
-    drawChart(res.labels, res.values);
-  } else if(currentView === 'week'){
-    const res = buildWeekData(anchorDate);
-    document.getElementById('center-title').textContent = res.centerText;
-    drawChart(res.labels, res.values);
-  } else if(currentView === 'month'){
-    const res = buildMonthData(anchorDate);
-    document.getElementById('center-title').textContent = res.centerText;
-    drawChart(res.labels, res.values);
-  } else if(currentView === 'year'){
-    const res = buildYearData(anchorDate);
-    document.getElementById('center-title').textContent = res.centerText;
-    drawChart(res.labels, res.values);
-  }
-}
-
-// build functions (reuse functions above)
-function buildDayDataWrapper(d){
-  return buildDayData(d);
-}
-function buildWeekDataWrapper(d){
-  return buildWeekData(d);
-}
-
-// Initialize: start with JST today, day view
-(function init(){
-  anchorDate = getJSTodayDateObj();
-  switchView('day');
-  // rerender when storage changes (if other tab updated) — optional
-  window.addEventListener('storage', function(){ renderCurrent(); });
-})();
-
-// utility formatting used by center text
-function formatSecondsToHMS(sec){
-  if(!sec || sec <= 0) return "0h 0m";
-  const h = Math.floor(sec/3600);
-  const m = Math.floor((sec%3600)/60);
-  return `${h}h ${m}m`;
-}
-
-/* Implementations of builder functions (re-declared here for closure) */
-function buildDayData(dateObj){
-  const secs = readDaySeconds(dateObj);
-  const labels = [ `${String(dateObj.getMonth()+1)}/${String(dateObj.getDate())}` ];
-  const values = [ secs ];
-  return { labels, values, centerText: formatSecondsToHMS(secs) };
-}
-
-function buildWeekData(dateObj){
-  const labels = [], values = [];
-  for(let i=6;i>=0;i--){
-    const d = new Date(dateObj);
-    d.setDate(d.getDate()-i);
-    labels.push(`${String(d.getMonth()+1)}/${String(d.getDate())}`);
-    values.push(readDaySeconds(d));
-  }
-  return { labels, values, centerText: formatSecondsToHMS(readDaySeconds(dateObj)) };
-}
-
-function buildMonthData(dateObj){
-  const year = dateObj.getFullYear(), month = dateObj.getMonth();
-  const last = new Date(year, month+1, 0).getDate();
-  const labels = [], values = [];
-  let total = 0;
-  for(let d=1; d<=last; d++){
-    const dt = new Date(year, month, d);
-    labels.push(String(d));
-    const secs = readDaySeconds(dt);
-    values.push(secs);
-    total += secs;
-  }
-  return { labels, values, centerText: `${year}年${month+1}月 — ${formatSecondsToHMS(total)}` };
-}
-
-function buildYearData(dateObj){
-  const year = dateObj.getFullYear();
-  const labels = [], values = [];
-  let total = 0;
-  for(let m=0;m<12;m++){
-    labels.push(`${m+1}月`);
-    const last = new Date(year, m+1, 0).getDate();
-    let monthSum = 0;
-    for(let d=1; d<=last; d++){
-      const dt = new Date(year, m, d);
-      monthSum += readDaySeconds(dt);
+  if (chartWeek) chartWeek.destroy();
+  chartWeek = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: ["6日前","5日前","4日前","3日前","2日前","昨日","今日"],
+      datasets: [{ data }]
+    },
+    options: {
+      onClick: (evt, item)=>{
+        if (!item.length) return;
+        const i = item[0].index;
+        document.getElementById("detail-text").textContent =
+          `${7-i}日前の勉強時間：${data[i]}分`;
+      },
+      scales: { y: { beginAtZero: true } }
     }
-    values.push(monthSum);
-    total += monthSum;
-  }
-  return { labels, values, centerText: `${year}年 — ${formatSecondsToHMS(total)}` };
+  });
 }
 
-/* End of script */
+function renderMonth() {
+  const v = document.getElementById("month-select").value;
+  if (!v) return;
+
+  const [year, month] = v.split("-").map(n=>parseInt(n));
+  const ctx = document.getElementById("chart-month").getContext("2d");
+  const data = loadMonthly(year, month);
+
+  if (chartMonth) chartMonth.destroy();
+  chartMonth = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: data.map((_,i)=>`${i+1}日`),
+      datasets: [{ data }]
+    },
+    options: {
+      onClick: (evt,item)=>{
+        if (!item.length) return;
+        const i = item[0].index;
+        document.getElementById("detail-text").textContent =
+          `${i+1}日の勉強時間：${data[i]}分`;
+      },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+}
+
+function renderYear() {
+  const year = parseInt(document.getElementById("year-input").value);
+  const ctx = document.getElementById("chart-year").getContext("2d");
+  const data = loadYearly(year);
+
+  if (chartYear) chartYear.destroy();
+  chartYear = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: [...Array(12)].map((_,i)=>`${i+1}月`),
+      datasets: [{ data }]
+    },
+    options: {
+      onClick: (evt,item)=>{
+        if (!item.length) return;
+        const i = item[0].index;
+        document.getElementById("detail-text").textContent =
+          `${i+1}月の勉強時間：${data[i]}分`;
+      },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+}
+
+/* ==============================
+      タブ切替
+============================== */
+document.querySelectorAll(".tab-button").forEach(btn=>{
+  btn.onclick = ()=>{
+    document.querySelectorAll(".tab-button").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+
+    const target = btn.dataset.view;
+    document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+    document.getElementById("view-"+target).classList.add("active");
+
+    document.getElementById("detail-text").textContent = "";
+
+    if (target==="day") renderDay();
+    if (target==="week") renderWeek();
+    if (target==="month") renderMonth();
+    if (target==="year") renderYear();
+  };
+});
+
+document.getElementById("month-select").onchange = renderMonth;
+document.getElementById("year-input").onchange = renderYear;
+
+/* 初回表示 */
+renderDay();
+
 </script>
 </body>
 </html>
